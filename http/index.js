@@ -4,11 +4,6 @@ import path from 'path';
 import EventEmmiter from 'events';
 import { StringDecoder } from 'string_decoder';
 
-const REQUEST = 'request';
-
-let count = '0';
-
-
 const convertHeadersToObject = (string, header = {}) => string.split('\r\n')
 .reduce((accumulator, current, i) => {
   if (!current) return accumulator;
@@ -40,22 +35,19 @@ class HttpServer extends EventEmmiter {
     this.server.on('connection', socket => {
       const decoder = new StringDecoder('utf8');
       let header = "";
-      let thatsAll = false;
+      let thatsAllHeaders = false;
       socket.on('readable', () => {
         let chunk;
         while (null !== (chunk = socket.read())) {
           const str = decoder.write(chunk);
-          if (!thatsAll) {
+          if (!thatsAllHeaders) {
             if (str.match(/\r\n\r\n/)) {
               // found the header boundary
               const split = str.split(/\r\n\r\n/);
               header += split.shift();
               header = convertHeadersToObject(header);
               // now the body of the message can be read from the stream.
-              // console.log(header);
-              // console.log(socket);
-              thatsAll = true;
-
+              thatsAllHeaders = true;
               const remaining = split.join('\r\n\r\n');
               const buf = Buffer.from(remaining, 'utf8');
               if (buf.length) {
@@ -67,11 +59,21 @@ class HttpServer extends EventEmmiter {
             }
           }
           else {
-            const code = header['Content-Type'].split('boundary=').pop();
-            if (str.match(code)) {
+            console.log(header);
+            const code = header['content-type'].split('boundary=').pop();
+            console.log(code);
+            // let finishedSocket = str;
+            // if (firstSplit) {
+            //   finishedSocket = str.split(`${code}\r\n`)[1];
+            //   firstSplit = false;
+            // }
+            if (str.match(`${code}--`)) {
+              // console.log(code);
+              // console.log(str);
               console.log('finish');
-              socket.write(`HTTP/1.1 OK 200\r\nContent-Type: text/html; charset=utf-8\r\n\r\n`);
-              socket.end('fsdsdwqdasfwa\r\n\r\n');
+              socket.write(`HTTP/1.1 OK 200\r\nContent-Type: application/json; charset=utf-8\r\n\r\n`);
+              socket.write(JSON.stringify({lalala: 'hello'}));
+              // finishData = true;
             }
           }
           socket.pipe(writeStream);
